@@ -4,7 +4,7 @@
 
 export const API_BASE_URL: string =
   (import.meta as any).env?.VITE_API_BASE_URL ||
-  `http://${window.location.hostname}:5000/api`;
+  `https://mypfefull-production.up.railway.app/api`;
 
 const TOKEN_KEY = "sentinel_token";
 
