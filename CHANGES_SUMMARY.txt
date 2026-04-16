@@ -1,0 +1,30 @@
+Update 2 – responsive fixes + overview multi-metric prediction
+
+What changed
+- Web layout hardening:
+  - Added min-width / overflow guards in AppLayout to prevent page content from pushing wider than the viewport.
+  - Added overflow guards to dashboard cards, charts, and alert ticker.
+  - Tightened overview two-column layout so the system logs panel stays bounded instead of forcing the page wider.
+
+- Web overview analytics:
+  - Replaced temperature-only prediction with multi-metric prediction.
+  - Added metric selector buttons for temperature, humidity, pressure, vibration, and gas.
+  - Added summary cards showing current and predicted values for every metric.
+  - Chart thresholds now adapt to the selected metric.
+
+- Mobile overview analytics:
+  - Replaced temperature-only analytics tab with multi-metric prediction.
+  - Added metric choice chips and summary cards for all metrics.
+  - Selected chart now changes thresholds and units according to the chosen metric.
+
+Files updated
+- web-version/src/components/layout/AppLayout.tsx
+- web-version/src/components/dashboard/MetricLineChart.tsx
+- web-version/src/components/dashboard/AlertTicker.tsx
+- web-version/src/pages/Dashboard.tsx
+- web-version/src/pages/Overview.tsx
+- flutter_app/lib/screens/overview/overview_screen.dart
+
+Validation
+- Web TS/TSX syntax checked with TypeScript transpileModule: OK for updated files.
+- Flutter could not be compiled in this container because Dart/Flutter is not installed.
