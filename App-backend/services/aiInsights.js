@@ -17,6 +17,7 @@ const STATE_LABELS = {
 };
 
 const STATE_ORDER = { stable: 0, watch: 1, alert: 2, maintenance: 2, critical: 3 };
+const CLASSIFICATION_TO_STATE = { Normal: "stable", Alerte: "alert", Critique: "critical", Maintenance: "maintenance" };
 
 function mean(values = []) {
   if (!values.length) return null;
@@ -243,6 +244,19 @@ function stateFromAlerts(alerts) {
   return "stable";
 }
 
+function uiStateFromClassification(classificationState) {
+  return CLASSIFICATION_TO_STATE[classificationState] || "stable";
+}
+
+function recommendationPriorityFromClassification(classificationState) {
+  return {
+    Normal: "normal",
+    Alerte: "important",
+    Maintenance: "important",
+    Critique: "urgent",
+  }[classificationState] || "normal";
+}
+
 export async function buildAiInsights({
   datacenter,
   thresholds,
@@ -250,6 +264,8 @@ export async function buildAiInsights({
   latestReadings,
   nodes,
   activeAlerts,
+  classifications = null,
+  aiModelStatus = null,
   hours = 6,
   points = 18,
 }) {
