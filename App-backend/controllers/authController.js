@@ -138,9 +138,9 @@ export const register = async (req, res) => {
       lastVerifyEmailSentAt: new Date(),
     });
 
-    await sendVerificationEmail(user, raw);
+    sendVerificationEmail(user, raw);
     const timestamp = new Date().toLocaleString("fr-TN");
-    await sendEmail({
+    sendEmail({
       to: user.email,
       ...buildSignupConfirmationEmail({
         user,
@@ -196,7 +196,7 @@ export const login = async (req, res) => {
       user.lastVerifyEmailSentAt = new Date();
       await user.save();
 
-      await sendVerificationEmail(user, raw);
+      sendVerificationEmail(user, raw);
 
       return res.status(403).json({
         success: false,
@@ -216,7 +216,7 @@ export const login = async (req, res) => {
     await user.save();
 
     if (user.notificationPreferences?.emailOnLogin ?? true) {
-      await sendEmail({
+      sendEmail({
         to: user.email,
         ...buildLoginSecurityEmail({
           user,
@@ -323,7 +323,7 @@ export const resendVerification = async (req, res) => {
     }
     await user.save();
 
-    await sendVerificationEmail(user, raw);
+    sendVerificationEmail(user, raw);
 
     return res.json({ success: true, message: "Email de vérification renvoyé." });
   } catch (e) {
@@ -351,7 +351,7 @@ export const requestPasswordReset = async (req, res) => {
         user.fullName = [user.firstName, user.lastName].filter(Boolean).join(" ").trim();
       }
       await user.save();
-      await sendPasswordResetEmail(user, raw);
+      sendPasswordResetEmail(user, raw);
 
       await createAuditLog({
         actorId: user._id,
@@ -409,7 +409,7 @@ export const resetPassword = async (req, res) => {
     user.lastPasswordResetAt = new Date();
     await user.save();
 
-    await sendEmail({
+    sendEmail({
       to: user.email,
       ...buildPasswordResetSuccessEmail({
         user,
