@@ -169,7 +169,7 @@ export function AppSidebar() {
       <SidebarHeader className="border-b border-sidebar-border p-4">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-full overflow-hidden bg-white">
-            <img src="/ooredoo-icon.jpeg" alt="Ooredoo" className="h-full w-full object-contain" />
+            <img src="/ooredoo-icon.jpeg" alt="Ooredoo" className="h-7 w-7 object-contain" />
           </div>
           {!collapsed && (
             <div className="min-w-0">

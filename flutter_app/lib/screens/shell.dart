@@ -352,8 +352,8 @@ class _AppShellState extends State<AppShell> {
                 ClipOval(
                   child: Image.asset(
                     'assets/ooredoo-icon.jpeg',
-                    width: 42,
-                    height: 42,
+                    width: 32,
+                    height: 32,
                     fit: BoxFit.contain,
                   ),
                 ),
