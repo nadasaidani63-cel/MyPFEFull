@@ -349,22 +349,12 @@ class _AppShellState extends State<AppShell> {
       child: expanded
           ? Row(
               children: [
-                Container(
-                  width: 42,
-                  height: 42,
-                  decoration: const BoxDecoration(
-                    color: AppColors.primary,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Center(
-                    child: Text(
-                      'O',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w900,
-                        fontSize: 20,
-                      ),
-                    ),
+                ClipOval(
+                  child: Image.asset(
+                    'assets/ooredoo-icon.jpeg',
+                    width: 42,
+                    height: 42,
+                    fit: BoxFit.contain,
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -414,25 +404,15 @@ class _AppShellState extends State<AppShell> {
           : Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Container(
-                  width: 42,
-                  height: 42,
-                  decoration: const BoxDecoration(
-                    color: AppColors.primary,
-                    shape: BoxShape.circle,
-                  ),
-                  child: InkWell(
-                    onTap: () => setState(() => _exp = true),
-                    borderRadius: BorderRadius.circular(21),
-                    child: const Center(
-                      child: Text(
-                        'O',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w900,
-                          fontSize: 20,
-                        ),
-                      ),
+                InkWell(
+                  onTap: () => setState(() => _exp = true),
+                  borderRadius: BorderRadius.circular(21),
+                  child: ClipOval(
+                    child: Image.asset(
+                      'assets/ooredoo-icon.jpeg',
+                      width: 42,
+                      height: 42,
+                      fit: BoxFit.contain,
                     ),
                   ),
                 ),
