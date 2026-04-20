@@ -45,7 +45,7 @@ function parseOutput(stdout, stderr) {
   }
 }
 
-function runPythonJson(scriptPath, payload, { timeoutMs = 60_000 } = {}) {
+export function runPythonJson(scriptPath, payload, { timeoutMs = 60_000 } = {}) {
   return new Promise((resolve, reject) => {
     const child = spawn(PYTHON_EXECUTABLE, [scriptPath], {
       cwd: backendRoot,
@@ -271,4 +271,3 @@ export function buildClassificationSummary(results = []) {
 export async function runModel1Retrain(payload) {
   return runPythonJson(retrainScriptPath, payload, { timeoutMs: 10 * 60_000 });
 }
-

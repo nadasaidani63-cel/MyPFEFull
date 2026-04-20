@@ -177,6 +177,25 @@ class ApiService {
     return (d['data'] ?? {}) as Map<String, dynamic>;
   }
 
+  Future<Map<String, dynamic>> aiChat({
+    required String datacenterId,
+    required String message,
+    String? zoneId,
+    String? nodeId,
+    int hours = 6,
+    int points = 18,
+  }) async {
+    final d = await _post('/sensors/ai-chat', {
+      'datacenterId': datacenterId,
+      if (zoneId != null) 'zoneId': zoneId,
+      if (nodeId != null) 'nodeId': nodeId,
+      'message': message,
+      'hours': hours,
+      'points': points,
+    });
+    return (d['data'] ?? {}) as Map<String, dynamic>;
+  }
+
   Future<List<AlertItem>> getAlerts(
       {String? datacenterId, int limit = 200}) async {
     final q = {'limit': '$limit'};

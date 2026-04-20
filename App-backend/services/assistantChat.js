@@ -37,8 +37,11 @@ export function buildAssistantReply({ message, insights }) {
   const recommendations = insights?.recommendations || [];
   const classifications = insights?.classifications?.nodes || [];
   const counts = insights?.classifications?.counts || {};
+  const anomalyModel = insights?.anomalyModel || {};
+  const riskModel = insights?.riskModel || {};
   const topMetric = metrics[0] || null;
   const topNode = classifications[0] || null;
+  const topRiskNode = riskModel?.nodes?.[0] || null;
   const requestedMetric = metricByKeyword(metrics, message);
 
   if (requestedMetric) {
@@ -58,10 +61,24 @@ export function buildAssistantReply({ message, insights }) {
   }
 
   if (normalized.includes("risque") || normalized.includes("danger")) {
+    if (topRiskNode) {
+      return `Le modele de risque place ${topRiskNode.nodeName || "un noeud"} en niveau ${topRiskNode.riskLevel} avec ${Math.round(topRiskNode.confidence || 0)}% de confiance. ${topRiskNode.action || ""}`.trim();
+    }
     if (!topMetric) {
       return "Je n'ai pas assez de donnees pour evaluer le risque actuellement.";
     }
     return `Le risque principal porte sur ${topMetric.label}. ${shortMetricLine(topMetric)} ${topMetric.recommendation}`;
+  }
+
+  if (normalized.includes("modele 2") || normalized.includes("model 2") || normalized.includes("anomalie ia")) {
+    return `Le modele 2 a detecte ${anomalyModel.anomalyCount || 0} anomalies automatiques. ${anomalies[0]?.title || "Aucune anomalie critique n'est remontee actuellement."}`;
+  }
+
+  if (normalized.includes("modele 3") || normalized.includes("model 3")) {
+    if (!topRiskNode) {
+      return "Le modele 3 ne remonte pas encore de risque prioritaire sur ce scope.";
+    }
+    return `Le modele 3 identifie ${topRiskNode.nodeName || "un noeud"} comme prioritaire avec un risque ${topRiskNode.riskLevel}. ${topRiskNode.action || ""}`.trim();
   }
 
   if (normalized.includes("maintenance") || normalized.includes("entretenir")) {
@@ -92,4 +109,3 @@ export function buildAssistantReply({ message, insights }) {
   ].filter(Boolean);
   return summaryParts.join(" ");
 }
-

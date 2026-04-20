@@ -22,6 +22,7 @@ import roleRequestRoutes from "./routes/roleRequestRoutes.js";
 import auditRoutes from "./routes/auditRoutes.js";
 
 import { startRealtimeSimulator } from "./services/realtimeSimulator.js";
+import { startAiTrainingScheduler } from "./services/aiTrainingScheduler.js";
 import { setIO } from "./services/socketInstance.js";
 import { normalizeRole } from "./utils/roles.js";
 
@@ -125,6 +126,7 @@ io.on("connection", (socket) => {
 
 async function boot() {
   await connectDB();
+  startAiTrainingScheduler();
 
   server.listen(PORT, "0.0.0.0", () => {
     console.log(`Server running on http://0.0.0.0:${PORT}`);

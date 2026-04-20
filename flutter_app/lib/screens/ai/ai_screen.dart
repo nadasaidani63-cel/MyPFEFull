@@ -7,6 +7,19 @@ import '../../utils/export_file.dart';
 import '../../utils/theme.dart';
 import '../../widgets/shared.dart';
 
+List<Map<String, dynamic>> _mapList(dynamic value) {
+  if (value is! List) return const [];
+  return value
+      .whereType<Map>()
+      .map((item) => Map<String, dynamic>.from(item))
+      .toList();
+}
+
+Map<String, dynamic> _mapValue(dynamic value) {
+  if (value is Map) return Map<String, dynamic>.from(value);
+  return const {};
+}
+
 class AIAssistantScreen extends StatefulWidget {
   const AIAssistantScreen({super.key});
 
@@ -68,19 +81,17 @@ class _AIAssistantScreenState extends State<AIAssistantScreen> {
   }
 
   void _toggleChat() {
-    setState(() => _chatOpen = !_chatOpen);
-    if (_chatOpen) {
+    final next = !_chatOpen;
+    setState(() => _chatOpen = next);
+    if (next) {
       FocusScope.of(context).requestFocus(_chatFocus);
       _scrollToBottom();
     }
   }
 
-  void _sendMsg() {
+  Future<void> _sendMsg() async {
     final text = _chatCtrl.text.trim();
-    if (text.isEmpty) return;
-
-    final summary = (_lastInsights?['summary'] as String?) ??
-        'Le système reste sous surveillance. Consultez les cartes de classification et les recommandations.';
+    if (text.isEmpty || _dcId == null || _chatLoading) return;
 
     setState(() {
       _chatOpen = true;
@@ -90,36 +101,82 @@ class _AIAssistantScreenState extends State<AIAssistantScreen> {
     });
     _scrollToBottom();
 
-    Future.delayed(const Duration(milliseconds: 700), () {
+    try {
+      final response = await context.read<AppProvider>().aiChat(
+            datacenterId: _dcId!,
+            message: text,
+          );
+
       if (!mounted) return;
       setState(() {
-        _messages.add(_ChatMsg(false, 'Analyse IA: $summary'));
+        final insights = response['insights'];
+        if (insights is Map) {
+          _lastInsights = Map<String, dynamic>.from(insights);
+        }
+        _messages.add(
+          _ChatMsg(
+            false,
+            (response['reply'] ?? 'Le backend assistant IA n''a pas renvoye de reponse detaillee.')
+                .toString(),
+          ),
+        );
         _chatLoading = false;
       });
       _scrollToBottom();
-    });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _messages.add(_ChatMsg(false, error.toString()));
+        _chatLoading = false;
+      });
+      _scrollToBottom();
+    }
   }
 
   Future<void> _exportInsights(Map<String, dynamic> data) async {
-    final metrics = (data['metrics'] as List? ?? []).cast<Map<String, dynamic>>();
-    final anomalies = (data['anomalies'] as List? ?? []).cast<Map<String, dynamic>>();
-    final recommendations = (data['recommendations'] as List? ?? []).cast<Map<String, dynamic>>();
+    final metrics = _mapList(data['metrics']);
+    final anomalies = _mapList(data['anomalies']);
+    final recommendations = _mapList(data['recommendations']);
+    final aiModules = _mapList(data['aiModules']);
+    final classificationNodes = _mapList(_mapValue(data['classifications'])['nodes']);
 
     final sb = StringBuffer();
     sb.writeln('Assistant IA - Insights');
     sb.writeln('Date export: ${DateTime.now().toIso8601String()}');
-    sb.writeln('Etat global: ${data['globalLabel'] ?? '—'}');
-    sb.writeln('Résumé: ${data['summary'] ?? '—'}');
+    sb.writeln('Etat global: ${data['globalLabel'] ?? '-'}');
+    sb.writeln('Resume: ${data['summary'] ?? '-'}');
     sb.writeln('');
 
+    if (aiModules.isNotEmpty) {
+      sb.writeln('Modules IA');
+      for (final module in aiModules) {
+        sb.writeln('- ${module['label']}: ${module['stateLabel']} | ${module['engine']} | ${module['detail']}');
+      }
+      sb.writeln('');
+    }
+
     if (metrics.isNotEmpty) {
-      sb.writeln('Classifications');
+      sb.writeln('Metriques');
       for (final metric in metrics) {
         sb.writeln(
           '- ${metric['label']}: ${metric['stateLabel']} '
-          '(actuel: ${metric['currentValue'] ?? '—'} ${metric['unit'] ?? ''}, '
-          'prévu: ${metric['predictedValue'] ?? '—'} ${metric['unit'] ?? ''}, '
+          '(actuel: ${metric['currentValue'] ?? '-'} ${metric['unit'] ?? ''}, '
+          'prevu: ${metric['predictedValue'] ?? '-'} ${metric['unit'] ?? ''}, '
           'risque: ${metric['riskScore'] ?? 0}%)',
+        );
+      }
+      sb.writeln('');
+    }
+
+    if (classificationNodes.isNotEmpty) {
+      sb.writeln('Noeuds classes');
+      for (final node in classificationNodes) {
+        final confidence = ((node['confidence'] as num?)?.toDouble() ?? 0) * 100;
+        sb.writeln(
+          '- ${node['nodeName'] ?? 'Noeud'} (${node['zoneName'] ?? 'Zone inconnue'}) '
+          '| ${node['stateLabel'] ?? node['state'] ?? '-'} '
+          '| confiance ${confidence.toStringAsFixed(0)}% '
+          '| ${node['recommendation'] ?? 'Aucune recommandation'}',
         );
       }
       sb.writeln('');
@@ -128,7 +185,7 @@ class _AIAssistantScreenState extends State<AIAssistantScreen> {
     if (anomalies.isNotEmpty) {
       sb.writeln('Anomalies');
       for (final anomaly in anomalies) {
-        sb.writeln('- ${anomaly['title']} — ${anomaly['detail']} (${anomaly['source']})');
+        sb.writeln('- ${anomaly['title']} | ${anomaly['detail']} (${anomaly['source']})');
       }
       sb.writeln('');
     }
@@ -144,7 +201,7 @@ class _AIAssistantScreenState extends State<AIAssistantScreen> {
     await saveTextFile(filename: filename, text: sb.toString());
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Export enregistré: $filename')),
+      SnackBar(content: Text('Export enregistre: $filename')),
     );
   }
 
@@ -193,22 +250,27 @@ class _AIAssistantScreenState extends State<AIAssistantScreen> {
         final data = snapshot.data ?? const <String, dynamic>{};
         _lastInsights = data;
 
-        final metrics = (data['metrics'] as List? ?? []).cast<Map<String, dynamic>>();
-        final anomalies = (data['anomalies'] as List? ?? []).cast<Map<String, dynamic>>();
-        final recommendations = (data['recommendations'] as List? ?? []).cast<Map<String, dynamic>>();
+        final metrics = _mapList(data['metrics']);
+        final anomalies = _mapList(data['anomalies']);
+        final recommendations = _mapList(data['recommendations']);
+        final aiModules = _mapList(data['aiModules']);
+        final classifications = _mapValue(data['classifications']);
+        final classificationNodes = _mapList(classifications['nodes']);
+        final classificationCounts = _mapValue(classifications['counts']);
+        final modelStatus = _mapValue(data['modelStatus']);
         final metric = metrics.firstWhere(
           (item) => item['key'] == _selectedMetric,
           orElse: () => metrics.isNotEmpty ? metrics.first : <String, dynamic>{},
         );
 
         if (metric.isNotEmpty) {
-          _selectedMetric = (metric['key'] ?? 'temperature') as String;
+          _selectedMetric = (metric['key'] ?? 'temperature').toString();
         }
 
-        final globalState = (data['globalState'] ?? 'stable') as String;
-        final globalLabel = (data['globalLabel'] ?? 'Stable') as String;
+        final globalState = (data['globalState'] ?? 'stable').toString();
+        final globalLabel = (data['globalLabel'] ?? 'Stable').toString();
         final globalColor = _stateColor(globalState);
-        final nodeHealth = (data['nodeHealth'] as Map<String, dynamic>? ?? const {});
+        final nodeHealth = _mapValue(data['nodeHealth']);
 
         return LayoutBuilder(
           builder: (context, constraints) {
@@ -308,6 +370,10 @@ class _AIAssistantScreenState extends State<AIAssistantScreen> {
                             ],
                           ),
                         ),
+                        if (aiModules.isNotEmpty) ...[
+                          const SizedBox(height: 16),
+                          _AiModulesGrid(modules: aiModules),
+                        ],
                         const SizedBox(height: 18),
                         Wrap(
                           spacing: 10,
@@ -330,7 +396,7 @@ class _AIAssistantScreenState extends State<AIAssistantScreen> {
                             onExport: () => _exportInsights(data),
                           ),
                           const SizedBox(height: 16),
-                          _RecommendationsColumn(recommendations: recommendations),
+                          _SideAiColumn(classificationNodes: classificationNodes, classificationCounts: classificationCounts, recommendations: recommendations),
                         ] else
                           Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -344,7 +410,7 @@ class _AIAssistantScreenState extends State<AIAssistantScreen> {
                                 ),
                               ),
                               const SizedBox(width: 20),
-                              SizedBox(width: 350, child: _RecommendationsColumn(recommendations: recommendations)),
+                              SizedBox(width: 360, child: _SideAiColumn(classificationNodes: classificationNodes, classificationCounts: classificationCounts, recommendations: recommendations)),
                             ],
                           ),
                         const SizedBox(height: 100),
@@ -454,6 +520,113 @@ class _MetricChip extends StatelessWidget {
           label,
           style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: selected ? color : AppColors.foreground),
         ),
+      ),
+    );
+  }
+}
+
+IconData _moduleIcon(String key) {
+  switch (key) {
+    case 'classification':
+      return Icons.psychology;
+    case 'anomaly-detection':
+      return Icons.shield_outlined;
+    case 'risk-analysis':
+      return Icons.auto_graph;
+    default:
+      return Icons.chat_bubble_outline;
+  }
+}
+
+String _nodeUiState(String state) {
+  switch (state) {
+    case 'Alerte':
+      return 'alert';
+    case 'Maintenance':
+      return 'maintenance';
+    case 'Critique':
+      return 'critical';
+    default:
+      return 'stable';
+  }
+}
+
+class _AiModulesGrid extends StatelessWidget {
+  final List<Map<String, dynamic>> modules;
+  const _AiModulesGrid({required this.modules});
+
+  @override
+  Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final cardWidth = screenWidth < 900
+        ? (screenWidth - 28).clamp(220.0, screenWidth)
+        : ((screenWidth - 100) / 2).clamp(220.0, 380.0);
+
+    return Wrap(
+      spacing: 12,
+      runSpacing: 12,
+      children: modules
+          .map((module) => SizedBox(width: cardWidth, child: _AiModuleCard(module: module)))
+          .toList(),
+    );
+  }
+}
+
+class _AiModuleCard extends StatelessWidget {
+  final Map<String, dynamic> module;
+  const _AiModuleCard({required this.module});
+
+  @override
+  Widget build(BuildContext context) {
+    final state = (module['state'] ?? 'stable').toString();
+    final color = _stateColor(state);
+    final meta = _mapValue(module['meta']);
+
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(_moduleIcon((module['key'] ?? '').toString()), color: color, size: 20),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text((module['label'] ?? '').toString(), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
+                    const SizedBox(height: 2),
+                    Text((module['engine'] ?? '').toString(), style: const TextStyle(fontSize: 11, color: AppColors.mutedFg)),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(999),
+                  border: Border.all(color: color.withOpacity(0.35)),
+                  color: color.withOpacity(0.08),
+                ),
+                child: Text((module['stateLabel'] ?? 'Stable').toString(), style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: color)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text((module['detail'] ?? '').toString(), style: const TextStyle(fontSize: 12, color: AppColors.foreground)),
+          if (meta['lastTrainingAt'] != null) ...[
+            const SizedBox(height: 8),
+            Text('Dernier entrainement: ${meta['lastTrainingAt']}', style: const TextStyle(fontSize: 11, color: AppColors.mutedFg)),
+          ],
+        ],
       ),
     );
   }
@@ -618,7 +791,7 @@ class _PredictionChart extends StatelessWidget {
   Widget build(BuildContext context) {
     final metricKey = (metric['key'] ?? 'temperature').toString();
     final color = MetricMeta.chartColor(metricKey);
-    final series = (metric['series'] as List? ?? []).cast<Map<String, dynamic>>();
+    final series = _mapList(metric['series']);
     if (series.length < 2) {
       return const Center(child: Text('Données insuffisantes', style: TextStyle(color: AppColors.mutedFg, fontSize: 12)));
     }
@@ -766,25 +939,132 @@ class _AnomalyCard extends StatelessWidget {
   }
 }
 
-class _RecommendationsColumn extends StatelessWidget {
+class _SideAiColumn extends StatelessWidget {
+  final List<Map<String, dynamic>> classificationNodes;
+  final Map<String, dynamic> classificationCounts;
   final List<Map<String, dynamic>> recommendations;
-  const _RecommendationsColumn({required this.recommendations});
+  const _SideAiColumn({required this.classificationNodes, required this.classificationCounts, required this.recommendations});
 
   @override
   Widget build(BuildContext context) {
-    return AppCard(
+    return Column(
+      children: [
+        AppCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Row(
+                children: [
+                  Icon(Icons.psychology, size: 16, color: AppColors.primary),
+                  SizedBox(width: 8),
+                  Expanded(child: Text('Noeuds classes', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700))),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  _CountPill(label: 'Normal', value: '${classificationCounts['Normal'] ?? 0}'),
+                  _CountPill(label: 'Alerte', value: '${classificationCounts['Alerte'] ?? 0}'),
+                  _CountPill(label: 'Maintenance', value: '${classificationCounts['Maintenance'] ?? 0}'),
+                  _CountPill(label: 'Critique', value: '${classificationCounts['Critique'] ?? 0}'),
+                ],
+              ),
+              const SizedBox(height: 12),
+              if (classificationNodes.isEmpty)
+                const EmptyState('Aucune classification noeud disponible', icon: Icons.hub_outlined)
+              else
+                ...classificationNodes.take(6).map((item) => _ClassifiedNodeCard(node: item)),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+        AppCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Row(
+                children: [
+                  Icon(Icons.bolt_outlined, size: 16, color: AppColors.primary),
+                  SizedBox(width: 8),
+                  Expanded(child: Text('Recommandations IA', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700))),
+                ],
+              ),
+              const SizedBox(height: 12),
+              if (recommendations.isEmpty)
+                const EmptyState('Aucune recommandation disponible', icon: Icons.tips_and_updates_outlined)
+              else
+                ...recommendations.map((item) => _RecommendationCard(rec: item)),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _CountPill extends StatelessWidget {
+  final String label;
+  final String value;
+  const _CountPill({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Text('$label: $value', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700)),
+    );
+  }
+}
+
+class _ClassifiedNodeCard extends StatelessWidget {
+  final Map<String, dynamic> node;
+  const _ClassifiedNodeCard({required this.node});
+
+  @override
+  Widget build(BuildContext context) {
+    final uiState = _nodeUiState((node['state'] ?? 'Normal').toString());
+    final color = _stateColor(uiState);
+    final confidence = ((node['confidence'] as num?)?.toDouble() ?? 0) * 100;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.06),
+        border: Border.all(color: color.withOpacity(0.22)),
+        borderRadius: BorderRadius.circular(10),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Row(
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            crossAxisAlignment: WrapCrossAlignment.center,
             children: [
-              Icon(Icons.bolt_outlined, size: 16, color: AppColors.primary),
-              SizedBox(width: 8),
-              Expanded(child: Text('Recommandations IA', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700))),
+              Icon(_stateIcon(uiState), color: color, size: 18),
+              Text((node['nodeName'] ?? 'Noeud').toString(), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(999),
+                  border: Border.all(color: color.withOpacity(0.35)),
+                  color: color.withOpacity(0.08),
+                ),
+                child: Text((node['stateLabel'] ?? node['state'] ?? 'Stable').toString(), style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: color)),
+              ),
             ],
           ),
-          const SizedBox(height: 12),
-          ...recommendations.map((item) => _RecommendationCard(rec: item)),
+          const SizedBox(height: 8),
+          Text('${node['zoneName'] ?? 'Zone inconnue'} | confiance ${confidence.toStringAsFixed(0)}% | cause ${node['rootCause'] ?? 'n/a'}', style: const TextStyle(fontSize: 12, color: AppColors.mutedFg)),
+          const SizedBox(height: 6),
+          Text((node['recommendation'] ?? 'Aucune recommandation').toString(), style: const TextStyle(fontSize: 12, color: AppColors.foreground)),
         ],
       ),
     );
@@ -851,7 +1131,7 @@ class _ChatPanel extends StatelessWidget {
   final FocusNode focusNode;
   final ScrollController scrollController;
   final VoidCallback onClose;
-  final VoidCallback onSend;
+  final Future<void> Function() onSend;
 
   const _ChatPanel({
     required this.mobile,
@@ -929,12 +1209,12 @@ class _ChatPanel extends StatelessWidget {
                     child: TextField(
                       controller: controller,
                       focusNode: focusNode,
-                      onSubmitted: (_) => onSend(),
+                      onSubmitted: (_) { onSend(); },
                       decoration: const InputDecoration(hintText: 'Poser une question...'),
                     ),
                   ),
                   const SizedBox(width: 8),
-                  FilledButton(onPressed: onSend, child: const Icon(Icons.send, size: 18)),
+                  FilledButton(onPressed: () { onSend(); }, child: const Icon(Icons.send, size: 18)),
                 ],
               ),
             ),

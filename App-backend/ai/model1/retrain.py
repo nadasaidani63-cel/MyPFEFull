@@ -157,7 +157,7 @@ def train_runtime_model(payload: dict) -> dict:
         max_depth=20,
         min_samples_leaf=4,
         class_weight="balanced_subsample",
-        n_jobs=-1,
+        n_jobs=1,
         random_state=42,
     )
     model.fit(train_x, train_y)
@@ -209,4 +209,3 @@ if __name__ == "__main__":
     except Exception as exc:
         sys.stderr.write(str(exc))
         raise
-

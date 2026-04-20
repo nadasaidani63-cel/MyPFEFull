@@ -305,6 +305,24 @@ class AppProvider extends ChangeNotifier {
     return _api.getAiInsights(datacenterId: dcId, hours: hours, points: points);
   }
 
+  Future<Map<String, dynamic>> aiChat({
+    required String datacenterId,
+    required String message,
+    String? zoneId,
+    String? nodeId,
+    int hours = 6,
+    int points = 18,
+  }) {
+    return _api.aiChat(
+      datacenterId: datacenterId,
+      message: message,
+      zoneId: zoneId,
+      nodeId: nodeId,
+      hours: hours,
+      points: points,
+    );
+  }
+
   Future<void> acknowledgeAlert(String id) async {
     await _api.acknowledgeAlert(id);
     final idx = _alerts.indexWhere((a) => a.id == id);

@@ -1,8 +1,8 @@
 import Alert from "../models/Alert.js";
 
 export const AI_METRICS = [
-  { key: "temperature", label: "Température", unit: "°C" },
-  { key: "humidity", label: "Humidité", unit: "%" },
+  { key: "temperature", label: "Temperature", unit: "C" },
+  { key: "humidity", label: "Humidite", unit: "%" },
   { key: "pressure", label: "Gaz CO2", unit: "ppm" },
   { key: "vibration", label: "Vibration", unit: "mm/s" },
   { key: "gasLevel", label: "Fumee", unit: "ppm" },
@@ -10,14 +10,26 @@ export const AI_METRICS = [
 
 const STATE_LABELS = {
   stable: "Stable",
-  watch: "À surveiller",
+  watch: "A surveiller",
   alert: "Alerte",
   critical: "Critique",
   maintenance: "Maintenance",
 };
 
-const STATE_ORDER = { stable: 0, watch: 1, alert: 2, maintenance: 2, critical: 3 };
-const CLASSIFICATION_TO_STATE = { Normal: "stable", Alerte: "alert", Critique: "critical", Maintenance: "maintenance" };
+const STATE_ORDER = {
+  stable: 0,
+  watch: 1,
+  alert: 2,
+  maintenance: 2,
+  critical: 3,
+};
+
+const CLASSIFICATION_TO_STATE = {
+  Normal: "stable",
+  Alerte: "alert",
+  Critique: "critical",
+  Maintenance: "maintenance",
+};
 
 function mean(values = []) {
   if (!values.length) return null;
@@ -79,6 +91,7 @@ function evaluateThresholdState(value, threshold) {
 
 function computeTrend(values) {
   if (values.length < 3) return { slope: 0, label: "stable" };
+
   const recent = values.slice(-Math.min(values.length, 6));
   const first = recent[0];
   const last = recent[recent.length - 1];
@@ -87,7 +100,7 @@ function computeTrend(values) {
 
   if (slope > span) return { slope, label: "up" };
   if (slope < -span) return { slope, label: "down" };
-  return { slope, label: "stable" };
+  return { slope: 0, label: "stable" };
 }
 
 function buildSeries(history, metricKey, points = 18, forecastPoints = 6) {
@@ -100,7 +113,14 @@ function buildSeries(history, metricKey, points = 18, forecastPoints = 6) {
     .sort((a, b) => a.time - b.time);
 
   if (!rows.length) {
-    return { series: [], actualValues: [], forecastValues: [], latestValue: null, predictedValue: null, trend: { slope: 0, label: "stable" } };
+    return {
+      series: [],
+      actualValues: [],
+      forecastValues: [],
+      latestValue: null,
+      predictedValue: null,
+      trend: { slope: 0, label: "stable" },
+    };
   }
 
   const from = rows[0].time.getTime();
@@ -116,11 +136,11 @@ function buildSeries(history, metricKey, points = 18, forecastPoints = 6) {
   }
 
   const actual = [];
-  for (let i = 0; i < points; i += 1) {
-    const values = buckets.get(i) || [];
+  for (let index = 0; index < points; index += 1) {
+    const values = buckets.get(index) || [];
     if (!values.length) continue;
     const avg = mean(values);
-    const t = new Date(from + i * bucketSize);
+    const t = new Date(from + index * bucketSize);
     actual.push({
       time: t.toISOString(),
       label: t.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }),
@@ -129,29 +149,33 @@ function buildSeries(history, metricKey, points = 18, forecastPoints = 6) {
   }
 
   if (!actual.length) {
-    const only = rows.slice(-Math.min(rows.length, points)).map((row) => ({
+    const fallback = rows.slice(-Math.min(rows.length, points)).map((row) => ({
       time: row.time.toISOString(),
       label: row.time.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }),
       actual: Number(row.value.toFixed(2)),
     }));
-    return buildSeries(
-      only.map((item) => ({ recordedAt: item.time, [metricKey]: item.actual })),
-      metricKey,
-      Math.min(points, only.length || points),
-      forecastPoints,
-    );
+    const actualValues = fallback.map((item) => item.actual);
+    const latestValue = actualValues[actualValues.length - 1] ?? null;
+    return {
+      series: fallback,
+      actualValues,
+      forecastValues: [],
+      latestValue,
+      predictedValue: latestValue,
+      trend: computeTrend(actualValues),
+    };
   }
 
   const actualValues = actual.map((item) => item.actual);
   const trend = computeTrend(actualValues);
   const baseline = actualValues[actualValues.length - 1];
-  const slope = clamp(trend.slope, -Math.abs(baseline || 1) * 0.08, Math.abs(baseline || 1) * 0.08);
-  const forecast = [];
+  const limitedSlope = clamp(trend.slope, -Math.abs(baseline || 1) * 0.08, Math.abs(baseline || 1) * 0.08);
   const step = Math.max(bucketSize, Math.ceil(totalDuration / Math.max(actual.length, 1)));
+  const forecast = [];
 
-  for (let i = 1; i <= forecastPoints; i += 1) {
-    const predicted = baseline + slope * i;
-    const t = new Date(to + step * i);
+  for (let index = 1; index <= forecastPoints; index += 1) {
+    const predicted = baseline + limitedSlope * index;
+    const t = new Date(to + step * index);
     forecast.push({
       time: t.toISOString(),
       label: t.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }),
@@ -206,10 +230,10 @@ function computeRisk({ currentValue, predictedValue, threshold, alertCount = 0, 
 
 function metricRecommendation({ label, state, trend, threshold, currentValue, predictedValue, offlineRatio }) {
   if (state === "maintenance") {
-    return `Planifier une maintenance préventive sur ${label.toLowerCase()} et vérifier la connectivité des nœuds.`;
+    return `Planifier une maintenance preventive sur ${label.toLowerCase()} et verifier la connectivite des noeuds.`;
   }
   if (state === "critical") {
-    return `Intervenir immédiatement sur ${label.toLowerCase()} : la valeur actuelle/prévue dépasse le seuil critique.`;
+    return `Intervenir immediatement sur ${label.toLowerCase()} car la valeur actuelle ou prevue depasse le seuil critique.`;
   }
   if (state === "alert") {
     return `Programmer une action corrective sur ${label.toLowerCase()} avant le prochain cycle de surcharge.`;
@@ -217,11 +241,11 @@ function metricRecommendation({ label, state, trend, threshold, currentValue, pr
   if (state === "watch") {
     return trend === "up"
       ? `${label} se rapproche d'un seuil. Renforcer la surveillance dans les prochaines minutes.`
-      : `${label} reste proche d'un seuil. Contrôler l'évolution et confirmer la stabilité.`;
+      : `${label} reste proche d'un seuil. Confirmer rapidement la stabilite.`;
   }
 
   if (offlineRatio > 0.1) {
-    return `Le système reste stable, mais quelques nœuds sont hors ligne. Vérifier la disponibilité réseau.`;
+    return "Le systeme reste stable, mais quelques noeuds sont hors ligne. Verifier la disponibilite reseau.";
   }
 
   const target = getMetricThresholdTarget(predictedValue ?? currentValue, threshold);
@@ -257,6 +281,24 @@ function recommendationPriorityFromClassification(classificationState) {
   }[classificationState] || "normal";
 }
 
+function uiStateFromRiskLevel(riskLevel) {
+  return {
+    FAIBLE: "stable",
+    MOYEN: "watch",
+    ELEVE: "alert",
+    CRITIQUE: "critical",
+  }[riskLevel] || "stable";
+}
+
+function recommendationPriorityFromRiskLevel(riskLevel) {
+  return {
+    FAIBLE: "normal",
+    MOYEN: "normal",
+    ELEVE: "important",
+    CRITIQUE: "urgent",
+  }[riskLevel] || "normal";
+}
+
 export async function buildAiInsights({
   datacenter,
   thresholds,
@@ -266,6 +308,10 @@ export async function buildAiInsights({
   activeAlerts,
   classifications = null,
   aiModelStatus = null,
+  model2Summary = null,
+  model2Status = null,
+  model3Summary = null,
+  model3Status = null,
   hours = 6,
   points = 18,
 }) {
@@ -282,7 +328,7 @@ export async function buildAiInsights({
       .filter((value) => value !== null);
     const currentValue = mean(latestValues);
     const metricAlerts = activeAlerts.filter((alert) => alert.metricName === metric.key || (metric.key === "gasLevel" && alert.metricName === "gas_level"));
-    const { series, actualValues, predictedValue, trend } = buildSeries(history, metric.key, points, 6);
+    const { series, predictedValue, trend } = buildSeries(history, metric.key, points, 6);
 
     let state = evaluateThresholdState(currentValue, threshold);
     const predictedState = evaluateThresholdState(predictedValue, threshold);
@@ -349,12 +395,12 @@ export async function buildAiInsights({
     id: String(alert._id),
     severity: severityFromAlert(alert),
     metricKey: alert.metricName,
-    metricLabel: AI_METRICS.find((item) => item.key === alert.metricName)?.label || alert.metricName || "Métrique",
-    title: alert.message || `${alert.metricName || "Métrique"} hors seuil détecté(e)`,
+    metricLabel: AI_METRICS.find((item) => item.key === alert.metricName)?.label || alert.metricName || "Metrique",
+    title: alert.message || `${alert.metricName || "Metrique"} hors seuil detecte(e)`,
     detail: alert.metricValue !== null && alert.metricValue !== undefined
       ? `${AI_METRICS.find((item) => item.key === alert.metricName)?.label || alert.metricName || "Valeur"}: ${Number(alert.metricValue).toFixed(alert.metricName === "pressure" ? 0 : 2)}`
-      : "Analyse d'écart détectée par Sentinel.",
-    source: [alert.zoneId?.name, alert.nodeId?.name].filter(Boolean).join(" / ") || datacenter?.name || "Système",
+      : "Analyse d'ecart detectee par Sentinel.",
+    source: [alert.zoneId?.name, alert.nodeId?.name].filter(Boolean).join(" / ") || datacenter?.name || "Systeme",
     createdAt: alert.createdAt,
     time: new Date(alert.createdAt).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }),
   }));
@@ -365,15 +411,72 @@ export async function buildAiInsights({
       severity: "warning",
       metricKey: "maintenance",
       metricLabel: "Maintenance",
-      title: "Disponibilité des nœuds dégradée",
-      detail: `${offlineNodes} nœud(s) hors ligne sur ${totalNodes}. Une maintenance préventive est recommandée.`,
+      title: "Disponibilite des noeuds degradee",
+      detail: `${offlineNodes} noeud(s) hors ligne sur ${totalNodes}. Une maintenance preventive est recommandee.`,
       source: datacenter?.name || "Datacenter",
       createdAt: new Date().toISOString(),
       time: new Date().toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }),
     });
   }
 
-  const recommendations = metrics
+  const model2Anomalies = (model2Summary?.nodes || [])
+    .filter((item) => item.isAnomaly)
+    .slice(0, 4)
+    .map((item, index) => ({
+      id: `model2-${item.nodeId || index}`,
+      severity: item.state === "Critique" ? "critical" : "warning",
+      metricKey: "model2",
+      metricLabel: "Detection d'anomalies",
+      title: `Anomalie detectee sur ${item.nodeName || "un noeud"}`,
+      detail: `${item.zoneName || "Zone inconnue"} • score ${item.anomalyScore ?? 0}% • cause ${item.rootCause || "indeterminee"}`,
+      source: item.zoneName || datacenter?.name || "Datacenter",
+      createdAt: new Date().toISOString(),
+      time: new Date().toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }),
+    }));
+
+  anomalies.unshift(...model2Anomalies);
+
+  const classificationRecommendations = (classifications?.nodes || [])
+    .filter((node) => node.state && node.state !== "Normal")
+    .slice(0, 3)
+    .map((node, index) => ({
+      id: `rec-node-${node.nodeId || index}`,
+      priority: recommendationPriorityFromClassification(node.state),
+      title: node.recommendation || `Verifier ${node.nodeName || "le noeud prioritaire"}.`,
+      detail: [
+        node.nodeName || "Noeud",
+        node.zoneName || "Zone inconnue",
+        node.confidence !== null && node.confidence !== undefined ? `Confiance ${Math.round(Number(node.confidence) * 100)}%` : null,
+      ].filter(Boolean).join(" • "),
+      target: node.zoneName || datacenter?.name || "Datacenter",
+      metricKey: node.rootCause || null,
+    }));
+
+  const anomalyRecommendations = (model2Summary?.nodes || [])
+    .filter((node) => node.isAnomaly)
+    .slice(0, 2)
+    .map((node, index) => ({
+      id: `rec-anomaly-${node.nodeId || index}`,
+      priority: node.state === "Critique" ? "urgent" : "important",
+      title: node.recommendation || `Inspection recommandee sur ${node.nodeName || "le noeud anormal"}.`,
+      detail: `${node.zoneName || "Zone inconnue"} • score anomalie ${node.anomalyScore ?? 0}%`,
+      target: node.zoneName || datacenter?.name || "Datacenter",
+      metricKey: node.rootCause || null,
+    }));
+
+  const riskRecommendations = (model3Summary?.nodes || [])
+    .filter((node) => ["ELEVE", "CRITIQUE"].includes(node.riskLevel))
+    .slice(0, 2)
+    .map((node, index) => ({
+      id: `rec-risk-${node.nodeId || index}`,
+      priority: recommendationPriorityFromRiskLevel(node.riskLevel),
+      title: node.action || `Risque ${node.riskLevel} sur ${node.nodeName || "un noeud"}.`,
+      detail: `${node.nodeName || "Noeud"} • ${node.zoneName || "Zone inconnue"} • confiance ${Math.round(Number(node.confidence || 0))}%`,
+      target: node.zoneName || datacenter?.name || "Datacenter",
+      metricKey: "risk-model",
+    }));
+
+  const metricRecommendations = metrics
     .filter((metric) => metric.state !== "stable")
     .slice(0, 5)
     .map((metric) => ({
@@ -382,36 +485,139 @@ export async function buildAiInsights({
       title: metric.recommendation,
       detail:
         metric.state === "maintenance"
-          ? `Couverture des données: ${Math.round(dataCoverage * 100)}% • Nœuds hors ligne: ${offlineNodes}`
-          : `${metric.label} actuel${metric.currentValue !== null ? `: ${metric.currentValue} ${metric.unit}` : ""}${metric.predictedValue !== null ? ` • Prévu: ${metric.predictedValue} ${metric.unit}` : ""}`,
+          ? `Couverture des donnees: ${Math.round(dataCoverage * 100)}% • Noeuds hors ligne: ${offlineNodes}`
+          : `${metric.label} actuel${metric.currentValue !== null ? `: ${metric.currentValue} ${metric.unit}` : ""}${metric.predictedValue !== null ? ` • Prevu: ${metric.predictedValue} ${metric.unit}` : ""}`,
       target: datacenter?.name || "Datacenter",
       metricKey: metric.key,
     }));
+
+  const recommendations = [...classificationRecommendations, ...anomalyRecommendations, ...riskRecommendations, ...metricRecommendations].slice(0, 6);
 
   if (!recommendations.length) {
     recommendations.push({
       id: "rec-stable",
       priority: "normal",
-      title: "Le système reste stable sur l'ensemble des métriques supervisées.",
-      detail: "Aucune dérive critique n'a été détectée sur l'horizon d'analyse courant.",
+      title: "Le systeme reste stable sur l'ensemble des metriques supervisees.",
+      detail: "Aucune derive critique n'a ete detectee sur l'horizon d'analyse courant.",
       target: datacenter?.name || "Datacenter",
       metricKey: null,
     });
   }
 
-  const globalState = metrics.reduce((best, metric) => (STATE_ORDER[metric.state] > STATE_ORDER[best] ? metric.state : best), "stable");
+  const metricsGlobalState = metrics.reduce((best, metric) => (STATE_ORDER[metric.state] > STATE_ORDER[best] ? metric.state : best), "stable");
+  const classificationGlobalState = uiStateFromClassification(classifications?.globalState);
+  const anomalyGlobalState = uiStateFromClassification(model2Summary?.globalState);
+  const riskGlobalState = uiStateFromRiskLevel(model3Summary?.globalState);
+  const globalState = [metricsGlobalState, classificationGlobalState, anomalyGlobalState, riskGlobalState]
+    .reduce((best, current) => (STATE_ORDER[current] > STATE_ORDER[best] ? current : best), "stable");
   const highestMetric = metrics[0] || null;
-  const summary = highestMetric
-    ? `${STATE_LABELS[globalState]} — ${highestMetric.label} ${highestMetric.currentValue !== null ? `à ${highestMetric.currentValue} ${highestMetric.unit}` : "avec données limitées"}. ${highestMetric.recommendation}`
-    : "Aucune donnée suffisante pour produire une analyse IA.";
+  const highestClassification = classifications?.nodes?.[0] || null;
+  const highestRiskNode = model3Summary?.nodes?.[0] || null;
+
+  const summaryParts = [];
+  if (highestClassification && STATE_ORDER[classificationGlobalState] >= STATE_ORDER[metricsGlobalState] && classificationGlobalState !== "stable") {
+    summaryParts.push(
+      `${STATE_LABELS[globalState]} - ${highestClassification.nodeName || "Noeud prioritaire"} classe ${highestClassification.stateLabel || highestClassification.state}.`
+    );
+    if (highestClassification.recommendation) {
+      summaryParts.push(highestClassification.recommendation);
+    }
+  } else if (highestRiskNode && STATE_ORDER[riskGlobalState] >= STATE_ORDER[metricsGlobalState] && riskGlobalState !== "stable") {
+    summaryParts.push(
+      `${STATE_LABELS[globalState]} - ${highestRiskNode.nodeName || "Noeud prioritaire"} presente un risque ${highestRiskNode.riskLevel}.`
+    );
+    if (highestRiskNode.action) {
+      summaryParts.push(highestRiskNode.action);
+    }
+  } else if (highestMetric) {
+    summaryParts.push(
+      `${STATE_LABELS[globalState]} - ${highestMetric.label} ${highestMetric.currentValue !== null ? `a ${highestMetric.currentValue} ${highestMetric.unit}` : "avec donnees limitees"}. ${highestMetric.recommendation}`
+    );
+  } else {
+    summaryParts.push("Aucune donnee suffisante pour produire une analyse IA.");
+  }
+
+  if (aiModelStatus?.error) {
+    summaryParts.push("Le module de classification est indisponible et l'assistant s'appuie provisoirement sur l'analyse temps reel.");
+  }
+
+  const aiModules = [
+    {
+      key: "classification",
+      label: "Modele 1 - Classification",
+      state: aiModelStatus?.available === false ? "alert" : classificationGlobalState,
+      stateLabel: aiModelStatus?.available === false ? "Alerte" : classifications?.globalLabel || STATE_LABELS[classificationGlobalState],
+      engine: aiModelStatus?.available === false
+        ? "Modele indisponible"
+        : aiModelStatus?.source === "runtime"
+          ? "Random Forest reentraine"
+          : "Random Forest integre",
+      detail: aiModelStatus?.error
+        ? aiModelStatus.error
+        : `${(classifications?.nodes || []).length} noeuds classes • version ${aiModelStatus?.version || classifications?.model?.version || "inconnue"}`,
+      meta: {
+        source: aiModelStatus?.source || classifications?.model?.source || null,
+        lastTrainingAt: aiModelStatus?.trainingState?.lastRunAt || null,
+      },
+    },
+    {
+      key: "anomaly-detection",
+      label: "Modele 2 - Detection d'anomalies",
+      state: model2Status?.available === false ? "alert" : anomalyGlobalState,
+      stateLabel: model2Status?.available === false ? "Alerte" : model2Summary?.globalLabel || STATE_LABELS[anomalyGlobalState],
+      engine: model2Status?.available === false ? "Modele indisponible" : "Isolation Forest integre",
+      detail: model2Status?.error
+        ? model2Status.error
+        : `${model2Summary?.anomalyCount || 0} anomalies detectees automatiquement`,
+      meta: {
+        anomalyCount: model2Summary?.anomalyCount || 0,
+        source: model2Status?.source || model2Summary?.model?.source || null,
+        version: model2Status?.version || model2Summary?.model?.version || null,
+      },
+    },
+    {
+      key: "risk-analysis",
+      label: "Modele 3 - Analyse de risque",
+      state: model3Status?.available === false ? "alert" : riskGlobalState,
+      stateLabel: model3Status?.available === false ? "Alerte" : model3Summary?.globalLabel || STATE_LABELS[riskGlobalState],
+      engine: model3Status?.available === false ? "Modele indisponible" : "Random Forest de risque",
+      detail: model3Status?.error
+        ? model3Status.error
+        : highestRiskNode
+          ? `${highestRiskNode.nodeName || "Noeud"} est le plus risque (${highestRiskNode.riskLevel})`
+          : "Pas assez de donnees pour projeter le risque",
+      meta: {
+        source: model3Status?.source || model3Summary?.model?.source || null,
+        version: model3Status?.version || model3Summary?.model?.version || null,
+      },
+    },
+    {
+      key: "assistant",
+      label: "Modele 4 - Assistant explicatif",
+      state: globalState,
+      stateLabel: STATE_LABELS[globalState],
+      engine: "Assistant contextuel relie aux insights IA",
+      detail: "Le chat repond a partir des seuils, des alertes, des classifications et des previsions courantes.",
+      meta: {
+        ready: true,
+      },
+    },
+  ];
 
   return {
     generatedAt: new Date().toISOString(),
     horizonHours: hours,
-    datacenter: datacenter ? { id: String(datacenter._id), name: datacenter.name, status: datacenter.status, location: datacenter.location || null } : null,
+    datacenter: datacenter
+      ? {
+          id: String(datacenter._id),
+          name: datacenter.name,
+          status: datacenter.status,
+          location: datacenter.location || null,
+        }
+      : null,
     globalState,
     globalLabel: STATE_LABELS[globalState],
-    summary,
+    summary: summaryParts.join(" "),
     nodeHealth: {
       total: totalNodes,
       online: onlineNodes,
@@ -421,6 +627,16 @@ export async function buildAiInsights({
     metrics,
     anomalies,
     recommendations,
+    classifications: classifications || null,
+    anomalyModel: model2Summary || null,
+    riskModel: model3Summary || null,
+    aiModules,
+    modelStatus: aiModelStatus || null,
+    modelStatuses: {
+      model1: aiModelStatus || null,
+      model2: model2Status || null,
+      model3: model3Status || null,
+    },
   };
 }
 
