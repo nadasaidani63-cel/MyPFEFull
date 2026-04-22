@@ -965,9 +965,10 @@ class _AppShellState extends State<AppShell> {
   }
 
   Widget _buildTopBar(AuthProvider auth, String title, bool desktop) {
+    final statusBarHeight = MediaQuery.of(context).padding.top;
     return Container(
-      height: 72,
-      padding: const EdgeInsets.symmetric(horizontal: 20),
+      padding: EdgeInsets.only(top: statusBarHeight, left: 20, right: 20),
+      height: 72 + statusBarHeight,
       decoration: const BoxDecoration(
         color: AppColors.card,
         border: Border(

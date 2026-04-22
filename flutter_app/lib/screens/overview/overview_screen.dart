@@ -578,6 +578,16 @@ class _RoomMapTab extends StatelessWidget {
                             },
                           ),
                         ),
+                        // Show selected node panel inline, below this room's zones
+                        if (selectedNodeId != null && selectedZone != null && roomZones.any((z) => z.id == selectedZone!.id))
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+                            child: _SelectedNodePanel(
+                              zoneMap: zoneMap,
+                              selectedNodeId: selectedNodeId!,
+                              reading: reading,
+                            ),
+                          ),
                       ],
                     ),
                   );
@@ -589,13 +599,6 @@ class _RoomMapTab extends StatelessWidget {
           Text('Total Zones: ${zones.length}',
               style: const TextStyle(fontSize: 10, color: AppColors.mutedFg),
               textAlign: TextAlign.center),
-          if (selectedNodeId != null) ...[
-            const SizedBox(height: 12),
-            _SelectedNodePanel(
-                zoneMap: zoneMap,
-                selectedNodeId: selectedNodeId!,
-                reading: reading),
-          ],
         ],
       ),
     );

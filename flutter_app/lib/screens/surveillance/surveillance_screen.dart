@@ -118,7 +118,7 @@ class _SurveillanceScreenState extends State<SurveillanceScreen> {
                 children: [
                   _StatCard(label: 'Nodes', value: '$onlineNodes', sub: '/ $onlineNodes en ligne'),
                   _StatCard(label: 'Alertes actives', value: '${app.activeCount}', sub: '${app.warningCount} warning / ${app.criticalCount} critique'),
-                  _StatCard(label: 'Datacenter', value: dc.name, sub: dc.location ?? '', valueSize: 13),
+                  _StatCard(label: 'Datacenter', value: dc.name, sub: dc.location ?? '', valueSize: 12),
                 ],
               ),
               const SizedBox(height: 18),
@@ -220,34 +220,34 @@ class _FixedMetricChartCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Wrap(
-            alignment: WrapAlignment.spaceBetween,
-            spacing: 12,
-            runSpacing: 6,
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('${metric.label} temps réel', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
-                  const SizedBox(height: 6),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Text(
-                        currentValue == null ? '—' : currentValue!.toStringAsFixed(metric.key == 'pressure' ? 0 : 2),
-                        style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: metric.color),
-                      ),
-                      const SizedBox(width: 4),
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 3),
-                        child: Text(metric.unit, style: const TextStyle(fontSize: 11, color: AppColors.mutedFg)),
-                      ),
-                    ],
-                  ),
-                ],
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('${metric.label} temps réel', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700), overflow: TextOverflow.ellipsis),
+                    const SizedBox(height: 4),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text(
+                          currentValue == null ? '—' : currentValue!.toStringAsFixed(metric.key == 'pressure' ? 0 : 2),
+                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: metric.color),
+                        ),
+                        const SizedBox(width: 4),
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 2),
+                          child: Text(metric.unit, style: const TextStyle(fontSize: 10, color: AppColors.mutedFg)),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
                 decoration: BoxDecoration(
                   color: stateColor.withOpacity(0.08),
                   borderRadius: BorderRadius.circular(999),
@@ -255,7 +255,7 @@ class _FixedMetricChartCard extends StatelessWidget {
                 ),
                 child: Text(
                   state == 'alert' ? 'Critique' : state == 'warning' ? 'Avert.' : 'Normal',
-                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: stateColor),
+                  style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.w700, color: stateColor),
                 ),
               ),
             ],
@@ -348,12 +348,12 @@ class _StatCard extends StatelessWidget {
   final String value;
   final String sub;
   final double valueSize;
-  const _StatCard({required this.label, required this.value, required this.sub, this.valueSize = 22});
+  const _StatCard({required this.label, required this.value, required this.sub, this.valueSize = 16});
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
         color: AppColors.card,
         border: Border.all(color: AppColors.border),
@@ -361,13 +361,14 @@ class _StatCard extends StatelessWidget {
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Text(label, style: const TextStyle(fontSize: 10, color: AppColors.mutedFg)),
-          const SizedBox(height: 4),
-          Text(value, style: TextStyle(fontSize: valueSize, fontWeight: FontWeight.w800), overflow: TextOverflow.ellipsis),
+          Text(label, style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w600, letterSpacing: 0.3, color: AppColors.mutedFg), overflow: TextOverflow.ellipsis),
+          const SizedBox(height: 3),
+          Text(value, style: TextStyle(fontSize: valueSize, fontWeight: FontWeight.w700, height: 1.2), overflow: TextOverflow.ellipsis, maxLines: 1),
           if (sub.isNotEmpty) ...[
-            const SizedBox(height: 3),
-            Text(sub, style: const TextStyle(fontSize: 10, color: AppColors.mutedFg), overflow: TextOverflow.ellipsis),
+            const SizedBox(height: 2),
+            Text(sub, style: const TextStyle(fontSize: 9.5, color: AppColors.mutedFg), overflow: TextOverflow.ellipsis),
           ],
         ],
       ),
