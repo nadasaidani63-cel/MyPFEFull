@@ -86,8 +86,8 @@ const seed = async () => {
     // PARTIE 1
     // =========================
 
-    // Salle C0 : 3 zones
-    addSeq({ part: "Partie 1", room: "Salle C0", count: 3 });
+    // Salle C0 : 4 zones
+    addSeq({ part: "Partie 1", room: "Salle C0", count: 4 });
 
     // Salle B0 : 7 zones divisées en 2 parties
     // Partie 1 : 4 zones

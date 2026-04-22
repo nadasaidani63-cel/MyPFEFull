@@ -7,10 +7,7 @@ class AppConfig {
       final host = html.window.location.hostname;
       return 'http://$host:5000/api';
     }
-    return const String.fromEnvironment(
-      'API_BASE_URL',
-      defaultValue: 'http://localhost:5000/api',
-    );
+    return 'https://mypfefull-production.up.railway.app/api';
   }
 
   static String get socketUrl {
@@ -18,10 +15,7 @@ class AppConfig {
       final host = html.window.location.hostname;
       return 'http://$host:5000';
     }
-    return const String.fromEnvironment(
-      'SOCKET_URL',
-      defaultValue: 'http://localhost:5000',
-    );
+    return 'https://mypfefull-production.up.railway.app';
   }
 
   static bool get isWeb => kIsWeb;

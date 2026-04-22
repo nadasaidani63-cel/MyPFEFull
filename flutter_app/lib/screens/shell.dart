@@ -349,13 +349,11 @@ class _AppShellState extends State<AppShell> {
       child: expanded
           ? Row(
               children: [
-                ClipOval(
-                  child: Image.asset(
-                    'assets/ooredoo-icon.jpeg',
-                    width: 32,
-                    height: 32,
-                    fit: BoxFit.contain,
-                  ),
+                Image.asset(
+                  'assets/ooredoo-icon.jpeg',
+                  width: 42,
+                  height: 42,
+                  fit: BoxFit.contain,
                 ),
                 const SizedBox(width: 12),
                 const Expanded(
@@ -407,13 +405,11 @@ class _AppShellState extends State<AppShell> {
                 InkWell(
                   onTap: () => setState(() => _exp = true),
                   borderRadius: BorderRadius.circular(21),
-                  child: ClipOval(
-                    child: Image.asset(
-                      'assets/ooredoo-icon.jpeg',
-                      width: 42,
-                      height: 42,
-                      fit: BoxFit.contain,
-                    ),
+                  child: Image.asset(
+                    'assets/ooredoo-icon.jpeg',
+                    width: 42,
+                    height: 42,
+                    fit: BoxFit.contain,
                   ),
                 ),
               ],
