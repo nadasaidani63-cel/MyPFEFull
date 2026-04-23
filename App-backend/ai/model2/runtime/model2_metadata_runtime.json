@@ -1,0 +1,28 @@
+{
+  "version": "model2-runtime",
+  "featureNames": [
+    "vibration_mm_s",
+    "gas_ppm",
+    "rssi_dbm",
+    "roll3_gas_ppm",
+    "delta_vibration_mm_s",
+    "co2_ppm",
+    "humidity_pct",
+    "roll3_humidity_pct",
+    "zone_enc"
+  ],
+  "runtime": {
+    "trainedAt": "2026-04-23T09:14:44.882067+00:00",
+    "appRows": 12000,
+    "nodeCount": 35,
+    "zoneCounts": {
+      "NET": 1368,
+      "SRV": 8234,
+      "UPS": 2398
+    },
+    "contamination": 0.1,
+    "decisionMean": 0.057652,
+    "decisionStd": 0.042239,
+    "detectedAnomalyRate": 0.1
+  }
+}

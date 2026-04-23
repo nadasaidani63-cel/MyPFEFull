@@ -1,0 +1,31 @@
+{
+  "version": "model3-runtime",
+  "featureNames": [
+    "temperature_c",
+    "humidity_pct",
+    "co2_ppm",
+    "vibration_mm_s",
+    "gas_ppm",
+    "rssi_dbm",
+    "zone_enc"
+  ],
+  "runtime": {
+    "trainedAt": "2026-04-23T09:14:47.191160+00:00",
+    "appRows": 12000,
+    "nodeCount": 35,
+    "zoneCounts": {
+      "NET": 1368,
+      "SRV": 8234,
+      "UPS": 2398
+    },
+    "labelCounts": {
+      "FAIBLE": 66,
+      "MOYEN": 9710,
+      "ELEVE": 2221,
+      "CRITIQUE": 3
+    },
+    "pseudoLabeling": "artifact_predictions_plus_domain_heuristics",
+    "trainAccuracy": 0.9934,
+    "trainF1Macro": 0.9824
+  }
+}

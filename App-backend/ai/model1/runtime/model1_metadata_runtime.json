@@ -1,0 +1,85 @@
+{
+  "version": "3.0-runtime-runtime",
+  "model": "RandomForestClassifier + HardOverride",
+  "n_estimators": 200,
+  "max_depth": 20,
+  "features": [
+    "temperature",
+    "humidity",
+    "pressure",
+    "vibration",
+    "gas",
+    "d_temperature",
+    "d_humidity",
+    "d_pressure",
+    "d_gas",
+    "ab_temperature",
+    "bel_temperature",
+    "ab_humidity",
+    "bel_humidity",
+    "ab_pressure",
+    "bel_pressure",
+    "ab_vibration",
+    "bel_vibration",
+    "ab_gas",
+    "bel_gas",
+    "node_enc"
+  ],
+  "classes": {
+    "0": "Normal",
+    "1": "Alerte",
+    "2": "Critique",
+    "3": "Maintenance"
+  },
+  "nominal_thresholds": {
+    "temperature": [
+      18,
+      27
+    ],
+    "humidity": [
+      30,
+      60
+    ],
+    "pressure": [
+      980,
+      1030
+    ],
+    "vibration": [
+      0,
+      0.6
+    ],
+    "gas": [
+      50,
+      500
+    ]
+  },
+  "hard_critique_thresholds": {
+    "temperature_max": 38,
+    "temperature_min": 12,
+    "humidity_max": 82,
+    "humidity_min": 12,
+    "vibration_max": 1.0,
+    "gas_max": 2500,
+    "delta_temperature_abs": 4,
+    "delta_gas_abs": 400
+  },
+  "metrics": {
+    "accuracy": 0.9998,
+    "f1_macro": 0.9995
+  },
+  "training_samples": 38004,
+  "test_samples": 9501,
+  "runtime": {
+    "trainedAt": "2026-04-22T16:16:56.133521+00:00",
+    "bootstrapRows": 3000,
+    "appRows": 3723,
+    "trainAccuracy": 0.9716,
+    "trainF1Macro": 0.9061,
+    "appLabelCounts": {
+      "Alerte": 5,
+      "Critique": 1399,
+      "Maintenance": 887,
+      "Normal": 1432
+    }
+  }
+}
