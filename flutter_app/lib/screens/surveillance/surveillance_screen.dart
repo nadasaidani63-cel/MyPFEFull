@@ -52,7 +52,6 @@ class _SurveillanceScreenState extends State<SurveillanceScreen> {
 
     final history = app.history;
     final latest = app.latestReadings;
-    final activeAlerts = app.alerts.where((a) => a.isActive).toList();
     final onlineNodes = latest.length;
     final metrics = [
       const _MetricCfg('temperature', 'Température', '°C', AppColors.chartRed),
@@ -62,66 +61,170 @@ class _SurveillanceScreenState extends State<SurveillanceScreen> {
       const _MetricCfg('gasLevel', 'Fumee', 'ppm', AppColors.chartGreen),
     ];
 
+    // Global system status
+    final globalStatus = app.criticalCount > 0
+        ? 'critical'
+        : app.warningCount > 0
+            ? 'warning'
+            : 'normal';
+    final globalLabel = globalStatus == 'critical'
+        ? 'Critique'
+        : globalStatus == 'warning'
+            ? 'Avert.'
+            : 'Normal';
+    final globalColor = AppColors.status(globalStatus);
+
     return LayoutBuilder(
       builder: (context, constraints) {
         final isPhone = constraints.maxWidth < 700;
-        final isTablet = constraints.maxWidth < 1200;
-        final chartCols = isPhone ? 1 : isTablet ? 2 : 2;
+        final p = isPhone ? 14.0 : 20.0;
+        final chartCols = isPhone ? 1 : 2;
 
         return SingleChildScrollView(
-          padding: EdgeInsets.all(isPhone ? 14 : 20),
+          padding: EdgeInsets.all(p),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Tableau de bord', style: TextStyle(fontSize: isPhone ? 18 : 20, fontWeight: FontWeight.w800)),
-              Text('Vue temps réel des métriques — ${dc.name}', style: const TextStyle(fontSize: 12, color: AppColors.mutedFg)),
-              const SizedBox(height: 16),
-              if (activeAlerts.isNotEmpty)
-                Container(
-                  margin: const EdgeInsets.only(bottom: 14),
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                  decoration: BoxDecoration(
-                    color: AppColors.statusCritical.withOpacity(0.05),
-                    border: Border.all(color: AppColors.statusCritical.withOpacity(0.25)),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Wrap(
-                    spacing: 12,
-                    runSpacing: 8,
-                    children: activeAlerts.take(4).map((alert) {
-                      final color = AppColors.status(alert.severity);
-                      return Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.warning_amber_rounded, size: 14, color: color),
-                          const SizedBox(width: 5),
-                          ConstrainedBox(
-                            constraints: BoxConstraints(maxWidth: isPhone ? constraints.maxWidth - 100 : 260),
-                            child: Text(
-                              alert.message ?? alert.metricName ?? 'Alerte active',
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(fontSize: 11, color: color),
-                            ),
-                          ),
-                        ],
-                      );
-                    }).toList(),
-                  ),
-                ),
-              GridView.count(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                crossAxisCount: isPhone ? 1 : 3,
-                crossAxisSpacing: 12,
-                mainAxisSpacing: 12,
-                childAspectRatio: isPhone ? 2.1 : 2.6,
+              // ── Header ──────────────────────────────────────────────
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _StatCard(label: 'Nodes', value: '$onlineNodes', sub: '/ $onlineNodes en ligne'),
-                  _StatCard(label: 'Alertes actives', value: '${app.activeCount}', sub: '${app.warningCount} warning / ${app.criticalCount} critique'),
-                  _StatCard(label: 'Datacenter', value: dc.name, sub: dc.location ?? '', valueSize: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Tableau de bord',
+                            style: TextStyle(fontSize: isPhone ? 17 : 20, fontWeight: FontWeight.w800)),
+                        const SizedBox(height: 2),
+                        Text('Vue temps réel des métriques — ${dc.name}',
+                            style: const TextStyle(fontSize: 11, color: AppColors.mutedFg)),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: globalColor.withOpacity(0.08),
+                      border: Border.all(color: globalColor.withOpacity(0.35)),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Text(globalLabel,
+                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: globalColor)),
+                  ),
                 ],
               ),
-              const SizedBox(height: 18),
+              const SizedBox(height: 14),
+
+              // ── 5 metric summary cards (horizontal scroll) ───────────
+              SizedBox(
+                height: 86,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: metrics.length,
+                  separatorBuilder: (_, __) => const SizedBox(width: 8),
+                  itemBuilder: (_, i) {
+                    final m = metrics[i];
+                    final current = _average(latest.map((r) => r.get(m.key)).whereType<double>().toList());
+                    final state = MetricMeta.valueStatus(m.key, current);
+                    final stateColor = state == 'alert'
+                        ? AppColors.statusCritical
+                        : state == 'warning'
+                            ? AppColors.statusWarning
+                            : AppColors.statusNormal;
+                    return Container(
+                      width: 130,
+                      padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
+                      decoration: BoxDecoration(
+                        color: stateColor.withOpacity(0.05),
+                        border: Border.all(color: stateColor.withOpacity(0.22)),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(m.label.toUpperCase(),
+                                    style: TextStyle(fontSize: 8.5, fontWeight: FontWeight.w700,
+                                        letterSpacing: 0.5, color: stateColor),
+                                    overflow: TextOverflow.ellipsis),
+                              ),
+                              Icon(_metricIcon(m.key), size: 13, color: stateColor),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              Text(
+                                current == null
+                                    ? '—'
+                                    : current.toStringAsFixed(m.key == 'pressure' ? 0 : 2),
+                                style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: m.color, height: 1),
+                              ),
+                              const SizedBox(width: 3),
+                              Padding(
+                                padding: const EdgeInsets.only(bottom: 1),
+                                child: Text(m.unit, style: const TextStyle(fontSize: 9, color: AppColors.mutedFg)),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 3),
+                          Text('Statut: $globalLabel',
+                              style: TextStyle(fontSize: 8.5, color: stateColor)),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(height: 12),
+
+              // ── 3 stat cards ─────────────────────────────────────────
+              if (isPhone) ...[
+                // Phone: 2 cols top row + full width datacenter
+                Row(
+                  children: [
+                    Expanded(
+                      child: _StatCard(
+                        label: 'NODES',
+                        value: '$onlineNodes',
+                        sub: '/ $onlineNodes en ligne',
+                        color: AppColors.statusNormal,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: _StatCard(
+                        label: 'ALERTES ACTIVES',
+                        value: '${app.activeCount}',
+                        sub: '${app.warningCount} warning / ${app.criticalCount} critique',
+                        color: app.activeCount > 0 ? AppColors.statusCritical : AppColors.mutedFg,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                _DcStatCard(name: dc.name, location: dc.location ?? ''),
+              ] else ...[
+                Row(
+                  children: [
+                    Expanded(child: _StatCard(label: 'NODES', value: '$onlineNodes',
+                        sub: '/ $onlineNodes en ligne', color: AppColors.statusNormal)),
+                    const SizedBox(width: 12),
+                    Expanded(child: _StatCard(label: 'ALERTES ACTIVES', value: '${app.activeCount}',
+                        sub: '${app.warningCount} warning / ${app.criticalCount} critique',
+                        color: app.activeCount > 0 ? AppColors.statusCritical : AppColors.mutedFg)),
+                    const SizedBox(width: 12),
+                    Expanded(child: _DcStatCard(name: dc.name, location: dc.location ?? '')),
+                  ],
+                ),
+              ],
+              const SizedBox(height: 16),
+
+              // ── Metric chart cards ────────────────────────────────────
               GridView.builder(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
@@ -129,7 +232,7 @@ class _SurveillanceScreenState extends State<SurveillanceScreen> {
                   crossAxisCount: chartCols,
                   crossAxisSpacing: 12,
                   mainAxisSpacing: 12,
-                  childAspectRatio: isPhone ? 1.38 : 1.55,
+                  childAspectRatio: isPhone ? 1.45 : 1.55,
                 ),
                 itemCount: metrics.length,
                 itemBuilder: (_, index) {
@@ -145,6 +248,16 @@ class _SurveillanceScreenState extends State<SurveillanceScreen> {
         );
       },
     );
+  }
+}
+
+IconData _metricIcon(String key) {
+  switch (key) {
+    case 'temperature': return Icons.device_thermostat_outlined;
+    case 'humidity':    return Icons.water_drop_outlined;
+    case 'pressure':    return Icons.speed_outlined;
+    case 'vibration':   return Icons.waves_outlined;
+    default:            return Icons.shield_outlined;
   }
 }
 
@@ -347,8 +460,61 @@ class _StatCard extends StatelessWidget {
   final String label;
   final String value;
   final String sub;
-  final double valueSize;
-  const _StatCard({required this.label, required this.value, required this.sub, this.valueSize = 16});
+  final Color color;
+  const _StatCard({
+    required this.label,
+    required this.value,
+    required this.sub,
+    this.color = AppColors.mutedFg,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.05),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(label,
+              style: TextStyle(fontSize: 9, fontWeight: FontWeight.w700,
+                  letterSpacing: 0.5, color: color),
+              overflow: TextOverflow.ellipsis),
+          const SizedBox(height: 4),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(value,
+                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800,
+                      color: color, height: 1)),
+              if (sub.isNotEmpty) ...[
+                const SizedBox(width: 5),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.only(bottom: 2),
+                    child: Text(sub,
+                        style: const TextStyle(fontSize: 10, color: AppColors.mutedFg),
+                        overflow: TextOverflow.ellipsis),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DcStatCard extends StatelessWidget {
+  final String name;
+  final String location;
+  const _DcStatCard({required this.name, required this.location});
 
   @override
   Widget build(BuildContext context) {
@@ -359,17 +525,37 @@ class _StatCard extends StatelessWidget {
         border: Border.all(color: AppColors.border),
         borderRadius: BorderRadius.circular(8),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.center,
+      child: Row(
         children: [
-          Text(label, style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w600, letterSpacing: 0.3, color: AppColors.mutedFg), overflow: TextOverflow.ellipsis),
-          const SizedBox(height: 3),
-          Text(value, style: TextStyle(fontSize: valueSize, fontWeight: FontWeight.w700, height: 1.2), overflow: TextOverflow.ellipsis, maxLines: 1),
-          if (sub.isNotEmpty) ...[
-            const SizedBox(height: 2),
-            Text(sub, style: const TextStyle(fontSize: 9.5, color: AppColors.mutedFg), overflow: TextOverflow.ellipsis),
-          ],
+          Container(
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+              color: AppColors.statusCritical.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Icon(Icons.monitor_heart_outlined, size: 16, color: AppColors.statusCritical),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text('DATACENTER',
+                    style: TextStyle(fontSize: 9, fontWeight: FontWeight.w700,
+                        letterSpacing: 0.5, color: AppColors.mutedFg)),
+                const SizedBox(height: 2),
+                Text(name,
+                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+                    overflow: TextOverflow.ellipsis, maxLines: 1),
+                if (location.isNotEmpty)
+                  Text(location,
+                      style: const TextStyle(fontSize: 10, color: AppColors.mutedFg),
+                      overflow: TextOverflow.ellipsis),
+              ],
+            ),
+          ),
         ],
       ),
     );

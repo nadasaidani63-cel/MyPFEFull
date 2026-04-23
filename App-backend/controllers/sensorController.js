@@ -497,10 +497,25 @@ export const chatWithAiAssistant = async (req, res) => {
       points,
     });
 
-    const reply = buildAssistantReply({
-      message,
-      insights,
-    });
+    let reply;
+    try {
+      const n8nResponse = await fetch(
+        process.env.N8N_WEBHOOK_URL || "https://n8n-production-d635.up.railway.app/webhook/datacenter-chat",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            message,
+            sensor_data: insights?.metrics?.[0] || null,
+            history: [],
+          }),
+        }
+      );
+      const n8nData = await n8nResponse.json();
+      reply = n8nData.reply || buildAssistantReply({ message, insights });
+    } catch {
+      reply = buildAssistantReply({ message, insights });
+    }
 
     res.json({
       success: true,

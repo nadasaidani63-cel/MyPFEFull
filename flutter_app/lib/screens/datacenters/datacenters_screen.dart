@@ -108,7 +108,7 @@ class _DatacentersScreenState extends State<DatacentersScreen> {
                         crossAxisCount: crossAxisCount,
                         crossAxisSpacing: 16,
                         mainAxisSpacing: 16,
-                        childAspectRatio: isDesktop ? 2.15 : 1.35,
+                        mainAxisExtent: 196,
                       ),
                       itemBuilder: (context, index) {
                         final dc = app.datacenters[index];
@@ -199,7 +199,7 @@ class _DcCard extends StatelessWidget {
 
         return AnimatedContainer(
           duration: const Duration(milliseconds: 250),
-          padding: EdgeInsets.all(compact ? 16 : 20),
+          padding: EdgeInsets.all(compact ? 12 : 14),
           decoration: BoxDecoration(
             color: AppColors.card,
             borderRadius: BorderRadius.circular(12),
@@ -235,18 +235,18 @@ class _DcCard extends StatelessWidget {
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
-                              fontSize: 15,
+                              fontSize: 13,
                               fontWeight: FontWeight.w700,
                               color: AppColors.foreground,
                             ),
                           ),
-                          const SizedBox(height: 2),
+                          const SizedBox(height: 1),
                           Text(
                             dc.location ?? '',
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
-                              fontSize: 12,
+                              fontSize: 11,
                               color: AppColors.mutedFg,
                             ),
                           ),
@@ -294,47 +294,47 @@ class _DcCard extends StatelessWidget {
                   ],
                 ),
               ],
-              const SizedBox(height: 18),
+              const SizedBox(height: 10),
               Row(
                 children: [
                   const Text('Nœuds',
-                      style: TextStyle(fontSize: 13, color: AppColors.mutedFg)),
+                      style: TextStyle(fontSize: 10, color: AppColors.mutedFg)),
                   const Spacer(),
                   Text('${dc.totalNodes}',
                       style: const TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.foreground)),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  const Text('Charge Actuelle',
-                      style: TextStyle(fontSize: 11, color: AppColors.mutedFg)),
-                  const Spacer(),
-                  Text('${dc.currentLoad} %',
-                      style: const TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w500,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
                           color: AppColors.foreground)),
                 ],
               ),
               const SizedBox(height: 6),
+              Row(
+                children: [
+                  const Text('Charge Actuelle',
+                      style: TextStyle(fontSize: 9.5, color: AppColors.mutedFg)),
+                  const Spacer(),
+                  Text('${dc.currentLoad} %',
+                      style: const TextStyle(
+                          fontSize: 9.5,
+                          fontWeight: FontWeight.w500,
+                          color: AppColors.foreground)),
+                ],
+              ),
+              const SizedBox(height: 5),
               ClipRRect(
                 borderRadius: BorderRadius.circular(999),
                 child: LinearProgressIndicator(
                   value: load,
-                  minHeight: 6,
+                  minHeight: 4,
                   backgroundColor: AppColors.muted,
                   valueColor:
                       AlwaysStoppedAnimation(_loadBarColor(dc.currentLoad)),
                 ),
               ),
-              const SizedBox(height: 18),
+              const SizedBox(height: 10),
               SizedBox(
                 width: double.infinity,
-                height: 46,
+                height: 38,
                 child: isConnected
                     ? ElevatedButton(
                         onPressed: onOpenDashboard,
@@ -379,17 +379,25 @@ class _DcCard extends StatelessWidget {
                           shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(8)),
                         ),
-                        child: Text(
-                          isConnecting
-                              ? 'CONNEXION...'
-                              : hasOtherConnected
-                                  ? 'NON DISPONIBLE'
-                                  : 'CONNEXION AU HUB',
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
-                              letterSpacing: 0.1),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              isConnecting
+                                  ? 'CONNEXION...'
+                                  : hasOtherConnected
+                                      ? 'NON DISPONIBLE'
+                                      : 'CONNEXION AU HUB',
+                              style: const TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                  letterSpacing: 0.1),
+                            ),
+                            if (!isConnecting && !hasOtherConnected) ...[
+                              const SizedBox(width: 6),
+                              const Icon(Icons.arrow_forward, size: 14),
+                            ],
+                          ],
                         ),
                       ),
               ),
@@ -414,17 +422,17 @@ class _DcIconBox extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 52,
-      height: 52,
+      width: 42,
+      height: 42,
       decoration: BoxDecoration(
         color: isConnected
             ? AppColors.statusNormal.withOpacity(0.16)
             : AppColors.primary.withOpacity(0.08),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(10),
       ),
       child: Icon(
         Icons.dns_outlined,
-        size: 24,
+        size: 20,
         color: isConnected ? AppColors.statusNormal : AppColors.primary,
       ),
     );

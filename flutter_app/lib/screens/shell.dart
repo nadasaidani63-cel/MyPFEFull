@@ -84,6 +84,7 @@ class _AppShellState extends State<AppShell> {
   int _idx = 0;
   bool _exp = true;
   double _sidebarWidth = 304;
+  double _infraHeight = 280;
   String? _selectedZoneId;
 
   List<_NavItem> _nav(AuthProvider auth) =>
@@ -301,35 +302,69 @@ class _AppShellState extends State<AppShell> {
                 ),
               ),
             Expanded(
-              child: ListView(
-                padding: EdgeInsets.symmetric(
-                  vertical: 8,
-                  horizontal: expanded ? 0 : 4,
-                ),
-                children: List.generate(
-                  nav.length,
-                  (i) => _Tile(
-                    nav[i],
-                    i == _idx,
-                    expanded,
-                    nav[i].label == 'Alertes' ? app.activeCount : 0,
-                    () {
-                      setState(() {
-                        _idx = i;
-                        if (nav[i].label != 'Informations') {
-                          _selectedZoneId = null;
-                        }
-                      });
-
-                      if (!desktop) Navigator.of(context).pop();
-                    },
+              child: Column(
+                children: [
+                  Expanded(
+                    child: ListView(
+                      padding: EdgeInsets.symmetric(
+                        vertical: 8,
+                        horizontal: expanded ? 0 : 4,
+                      ),
+                      children: List.generate(
+                        nav.length,
+                        (i) => _Tile(
+                          nav[i],
+                          i == _idx,
+                          expanded,
+                          nav[i].label == 'Alertes' ? app.activeCount : 0,
+                          () {
+                            setState(() {
+                              _idx = i;
+                              if (nav[i].label != 'Informations') {
+                                _selectedZoneId = null;
+                              }
+                            });
+                            if (!desktop) Navigator.of(context).pop();
+                          },
+                        ),
+                      ),
+                    ),
                   ),
-                ),
+                  if (expanded) ...[
+                    // Drag handle
+                    GestureDetector(
+                      behavior: HitTestBehavior.translucent,
+                      onVerticalDragUpdate: (details) {
+                        setState(() {
+                          _infraHeight = (_infraHeight - details.delta.dy)
+                              .clamp(120.0, 480.0);
+                        });
+                      },
+                      child: Container(
+                        height: 14,
+                        color: Colors.transparent,
+                        alignment: Alignment.center,
+                        child: Container(
+                          width: 32,
+                          height: 3,
+                          decoration: BoxDecoration(
+                            color: AppColors.sidebarBorder,
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                        ),
+                      ),
+                    ),
+                    SizedBox(
+                      height: _infraHeight,
+                      child: SingleChildScrollView(
+                        child: _buildInfraPanel(app, dcP, nav, desktop),
+                      ),
+                    ),
+                  ],
+                ],
               ),
             ),
             const Divider(height: 1),
-            if (expanded) _buildInfraPanel(app, dcP, nav, desktop),
-            if (expanded) const Divider(height: 1),
             _buildFooter(auth, app, dcP, expanded),
           ],
         ),
@@ -648,42 +683,39 @@ class _AppShellState extends State<AppShell> {
             ),
           const SizedBox(height: 10),
           if (connected != null)
-            ConstrainedBox(
-              constraints: const BoxConstraints(maxHeight: 260),
-              child: SingleChildScrollView(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    for (final part in parts) ...[
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(2, 4, 2, 8),
-                        child: Text(
-                          part,
-                          style: const TextStyle(
-                            fontSize: 9,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.mutedFg,
-                            letterSpacing: 1,
-                          ),
-                        ),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                for (final part in parts) ...[
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(2, 4, 2, 8),
+                    child: Text(
+                      part,
+                      style: const TextStyle(
+                        fontSize: 9,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.mutedFg,
+                        letterSpacing: 1,
                       ),
-                      for (final entry in groupedRooms.where((room) => room.part == part).toList().asMap().entries)
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 8),
-                          child: Builder(
-                            builder: (context) {
-                              final room = entry.value;
-                              final accent = accents[entry.key % accents.length];
-                              final selected = room.zoneIds.contains(_selectedZoneId);
-                              final borderColor = room.status == 'critical'
-                                  ? AppColors.statusCritical.withOpacity(0.2)
-                                  : room.status == 'warning'
-                                      ? AppColors.statusWarning.withOpacity(0.24)
-                                      : AppColors.border;
+                    ),
+                  ),
+                  for (final entry in groupedRooms.where((room) => room.part == part).toList().asMap().entries)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: Builder(
+                        builder: (context) {
+                          final room = entry.value;
+                          final accent = accents[entry.key % accents.length];
+                          final selected = room.zoneIds.contains(_selectedZoneId);
+                          final borderColor = room.status == 'critical'
+                              ? AppColors.statusCritical.withOpacity(0.2)
+                              : room.status == 'warning'
+                                  ? AppColors.statusWarning.withOpacity(0.24)
+                                  : AppColors.border;
 
-                              return InkWell(
-                                borderRadius: BorderRadius.circular(16),
-                                onTap: () => _openZoneFromSidebar(room.firstZoneId, nav, desktop),
+                          return InkWell(
+                            borderRadius: BorderRadius.circular(16),
+                            onTap: () => _openZoneFromSidebar(room.firstZoneId, nav, desktop),
                                 child: Container(
                                   padding: const EdgeInsets.all(12),
                                   decoration: BoxDecoration(
@@ -769,9 +801,7 @@ class _AppShellState extends State<AppShell> {
                         ),
                     ],
                   ],
-                ),
-              ),
-            )
+                )
           else
             const Padding(
               padding: EdgeInsets.only(top: 6, left: 4),
