@@ -499,20 +499,23 @@ export const chatWithAiAssistant = async (req, res) => {
 
     let reply;
     try {
-      const n8nResponse = await fetch(
-        process.env.N8N_WEBHOOK_URL || "https://n8n-production-d635.up.railway.app/webhook/datacenter-chat",
+      const geminiRes = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${process.env.GEMINI_API_KEY}`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            message,
-            sensor_data: insights?.metrics?.[0] || null,
-            history: [],
+            contents: [{
+              role: "user",
+              parts: [{ text: `Tu es l'assistant IA du système Datacenter AI. Réponds en français en 3-5 phrases.\n\n${message}` }]
+            }],
+            generationConfig: { temperature: 0.3, maxOutputTokens: 1024 }
           }),
         }
       );
-      const n8nData = await n8nResponse.json();
-      reply = n8nData.reply || buildAssistantReply({ message, insights });
+      const geminiData = await geminiRes.json();
+      reply = geminiData?.candidates?.[0]?.content?.parts?.[0]?.text
+        || buildAssistantReply({ message, insights });
     } catch {
       reply = buildAssistantReply({ message, insights });
     }
