@@ -9,8 +9,40 @@ import { getEffectiveThresholds, evaluateMetric } from "./thresholds.js";
 import { buildAlertEmail } from "./emailTemplates.js";
 
 const ALERT_EMAIL_COOLDOWN_MS = Number(process.env.ALERT_EMAIL_COOLDOWN_MS || 30 * 60_000);
+// Minimum gap between two NEW alert docs for the same node (default 2 h)
+const ALERT_CREATE_COOLDOWN_MS = Number(process.env.ALERT_CREATE_COOLDOWN_MS || 2 * 60 * 60_000);
+// Max new alerts created per datacenter per calendar day
+const ALERT_DAILY_CAP = Number(process.env.ALERT_DAILY_CAP || 9);
+
 const levelRank = { normal: 0, warning: 1, alert: 2, critical: 2 };
 const nodeEmailCooldown = new Map();
+// key: nodeId  → timestamp of last alert creation
+const nodeAlertCooldown = new Map();
+// key: "datacenterId:YYYY-MM-DD" → count of new alerts created that day
+const dailyAlertCount = new Map();
+
+function todayKey(datacenterId) {
+  return `${datacenterId}:${new Date().toISOString().slice(0, 10)}`;
+}
+
+function isDailyCapReached(datacenterId) {
+  const key = todayKey(datacenterId);
+  return (dailyAlertCount.get(key) || 0) >= ALERT_DAILY_CAP;
+}
+
+function incrementDailyCount(datacenterId) {
+  const key = todayKey(datacenterId);
+  dailyAlertCount.set(key, (dailyAlertCount.get(key) || 0) + 1);
+}
+
+function isNodeAlertOnCooldown(nodeId) {
+  const last = nodeAlertCooldown.get(String(nodeId)) || 0;
+  return Date.now() - last < ALERT_CREATE_COOLDOWN_MS;
+}
+
+function markNodeAlertCooldown(nodeId) {
+  nodeAlertCooldown.set(String(nodeId), Date.now());
+}
 
 function bestStatus(statuses) {
   return statuses.reduce((best, current) => (levelRank[current] > levelRank[best] ? current : best), "normal");
@@ -159,8 +191,17 @@ export async function ingestReading({ payload, io = null }) {
     let alertDoc;
     let eventType = null;
     if (!activeAlert) {
-      alertDoc = await Alert.create({ ...payloadUpdate, status: "active" });
-      eventType = "notified";
+      // Enforce per-node cooldown and daily cap before creating a new alert doc
+      const suppressed =
+        isNodeAlertOnCooldown(node._id) ||
+        isDailyCapReached(datacenter._id);
+
+      if (!suppressed) {
+        alertDoc = await Alert.create({ ...payloadUpdate, status: "active" });
+        eventType = "notified";
+        markNodeAlertCooldown(node._id);
+        incrementDailyCount(datacenter._id);
+      }
     } else {
       const previousLevel = activeAlert.level;
       // Use findByIdAndUpdate instead of Object.assign + save to avoid
