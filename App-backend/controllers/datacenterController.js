@@ -5,7 +5,7 @@ import Node from "../models/Node.js";
 // GET /api/datacenters
 export const getDatacenters = async (req, res) => {
   try {
-    const datacenters = await Datacenter.find();
+    const datacenters = await Datacenter.find().sort({ displayOrder: 1, createdAt: 1, name: 1 });
     // attach zones and node counts
     const result = await Promise.all(
       datacenters.map(async (dc) => {

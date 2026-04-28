@@ -2,8 +2,14 @@ import mongoose from "mongoose";
 
 const zoneSchema = new mongoose.Schema(
   {
+    key: { type: String, default: null, unique: true, sparse: true },
     name: { type: String, required: true },
     description: { type: String, default: null },
+    sourceType: {
+      type: String,
+      enum: ["managed", "simulated", "prototype"],
+      default: "managed",
+    },
     status: {
       type: String,
       enum: ["normal", "warning", "alert", "critical"],

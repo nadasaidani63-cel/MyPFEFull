@@ -22,6 +22,7 @@ import roleRequestRoutes from "./routes/roleRequestRoutes.js";
 import auditRoutes from "./routes/auditRoutes.js";
 
 import { startRealtimeSimulator } from "./services/realtimeSimulator.js";
+import { startPrototypeRealtimeBridge } from "./services/prototypeRealtimeBridge.js";
 import { startAiTrainingScheduler } from "./services/aiTrainingScheduler.js";
 import { setIO } from "./services/socketInstance.js";
 import { normalizeRole } from "./utils/roles.js";
@@ -137,6 +138,10 @@ async function boot() {
       intervalMs: Number(process.env.SIMULATOR_INTERVAL_MS || 15_000),
     });
   }
+
+  startPrototypeRealtimeBridge(io).catch((error) => {
+    console.error("Prototype datacenter bridge failed:", error.message);
+  });
 }
 
 boot().catch((err) => {

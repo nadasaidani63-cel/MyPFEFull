@@ -89,7 +89,7 @@ export async function startRealtimeSimulator(io, { intervalMs = DEFAULT_INTERVAL
     ticking = true;
 
     try {
-      const nodes = await Node.find({ isOnline: true });
+      const nodes = await Node.find({ isOnline: true, sourceType: { $ne: "prototype" } });
       const now = Date.now();
 
       for (const node of nodes) {

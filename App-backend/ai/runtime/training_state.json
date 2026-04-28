@@ -1,70 +1,37 @@
 {
   "enabled": true,
-  "lastRunAt": "2026-04-22T16:16:56.390Z",
-  "lastReadingCount": 3723,
+  "lastRunAt": "2026-04-28T14:32:24.912Z",
+  "lastReadingCount": 247675,
   "exportPath": "C:\\Users\\MSI\\Desktop\\PFE\\final-all-app\\final_solution_updated_v2\\App-backend\\ai\\runtime\\model1_app_training.csv",
-  "exportRowCount": 3723,
+  "exportRowCount": 12000,
   "result": {
     "label": "model1",
-    "success": true,
+    "success": false,
     "skipped": false,
-    "lastRunAt": "2026-04-22T16:16:56.390Z",
-    "bootstrapRows": 3000,
-    "appRows": 3723,
-    "trainAccuracy": 0.9716,
-    "trainF1Macro": 0.9061,
-    "appLabelCounts": {
-      "Alerte": 5,
-      "Critique": 1399,
-      "Maintenance": 887,
-      "Normal": 1432
-    },
-    "runtimeMetadataPath": "C:\\Users\\MSI\\Desktop\\PFE\\final-all-app\\final_solution_updated_v2\\App-backend\\ai\\model1\\runtime\\model1_metadata_runtime.json"
+    "lastRunAt": "2026-04-28T14:32:24.912Z",
+    "error": "spawn EPERM"
   },
   "models": {
     "model1": {
       "label": "model1",
-      "success": true,
+      "success": false,
       "skipped": false,
-      "lastRunAt": "2026-04-22T16:16:56.390Z",
-      "bootstrapRows": 3000,
-      "appRows": 3723,
-      "trainAccuracy": 0.9716,
-      "trainF1Macro": 0.9061,
-      "appLabelCounts": {
-        "Alerte": 5,
-        "Critique": 1399,
-        "Maintenance": 887,
-        "Normal": 1432
-      },
-      "runtimeMetadataPath": "C:\\Users\\MSI\\Desktop\\PFE\\final-all-app\\final_solution_updated_v2\\App-backend\\ai\\model1\\runtime\\model1_metadata_runtime.json"
+      "lastRunAt": "2026-04-28T14:32:24.912Z",
+      "error": "spawn EPERM"
     },
     "model2": {
       "label": "model2",
-      "success": true,
+      "success": false,
       "skipped": false,
-      "lastRunAt": "2026-04-22T16:14:36.471Z",
-      "appRows": 3723,
-      "nodeCount": 35,
-      "contamination": 0.1,
-      "detectedAnomalyRate": 0.1002,
-      "runtimeMetadataPath": "C:\\Users\\MSI\\Desktop\\PFE\\final-all-app\\final_solution_updated_v2\\App-backend\\ai\\model2\\runtime\\model2_metadata_runtime.json"
+      "lastRunAt": "2026-04-28T14:32:24.912Z",
+      "error": "spawn EPERM"
     },
     "model3": {
       "label": "model3",
-      "success": true,
+      "success": false,
       "skipped": false,
-      "lastRunAt": "2026-04-22T16:14:37.299Z",
-      "appRows": 3723,
-      "nodeCount": 35,
-      "labelCounts": {
-        "FAIBLE": 157,
-        "MOYEN": 3374,
-        "ELEVE": 192
-      },
-      "trainAccuracy": 0.9968,
-      "trainF1Macro": 0.9877,
-      "runtimeMetadataPath": "C:\\Users\\MSI\\Desktop\\PFE\\final-all-app\\final_solution_updated_v2\\App-backend\\ai\\model3\\runtime\\model3_metadata_runtime.json"
+      "lastRunAt": "2026-04-28T14:32:24.912Z",
+      "error": "spawn EPERM"
     }
   }
 }
